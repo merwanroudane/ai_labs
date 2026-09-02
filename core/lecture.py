@@ -248,13 +248,13 @@ def hero(kicker: str, title: str, blurb: str, chips: Sequence[str] = ()) -> None
 def section(num: str, title: str) -> None:
     st.markdown(
         f'<div class="mp-sec"><span class="mp-num">{html.escape(num)}</span>'
-        f'<h2>{html.escape(title)}</h2></div>',
+        f'<h2>{tex(title)}</h2></div>',
         unsafe_allow_html=True,
     )
 
 
 def sub(title: str) -> None:
-    st.markdown(f'<div class="mp-sub">{html.escape(title)}</div>',
+    st.markdown(f'<div class="mp-sub">{tex(title)}</div>',
                 unsafe_allow_html=True)
 
 

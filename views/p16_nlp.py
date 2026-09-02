@@ -1997,7 +1997,11 @@ def s_16_6():
     anim_header("Attention weights across a decoding run")
 
     src_t = ["March", "3", ",", "2019", "<pad>"]
-    out_t = ["2", "0", "1", "9", "-", "0", "3", "-", "0", "3"]
+    out_chars = ["2", "0", "1", "9", "-", "0", "3", "-", "0", "3"]
+    # the axis labels must be UNIQUE and non-numeric, or Plotly coerces them
+    # to numbers and the heatmap cells land off-scale
+    out_t = [f"{i+1}: {c}" for i, c in enumerate(out_chars)]
+    src_lab = [f"{i+1}: {c}" for i, c in enumerate(src_t)]
     focus = [3, 3, 3, 3, 2, 0, 0, 2, 1, 1]
     rng2 = np.random.default_rng(3)
     A = np.zeros((len(out_t), len(src_t)))
@@ -2012,22 +2016,25 @@ def s_16_6():
         Z = np.full((len(out_t), len(src_t)), np.nan)
         Z[:k] = A[:k]
         frames.append(go.Frame(name=str(k), data=[
-            go.Heatmap(z=Z, x=src_t, y=out_t, colorscale=nav.cscale(),
+            go.Heatmap(z=Z, x=src_lab, y=out_t, colorscale=nav.cscale(),
                        zmin=0, zmax=A.max(), xgap=2, ygap=2,
                        colorbar=dict(title="α")),
         ], layout=go.Layout(annotations=[anim.annotate_step(
-            f"output step {k}: emitting {out_t[k-1]!r}   ·   attending mostly "
+            f"output step {k}: emitting {out_chars[k-1]!r}   ·   attending mostly "
             f"to {src_t[int(np.argmax(A[k-1]))]!r} "
             f"(α = {A[k-1].max():.2f})   ·   padding weight "
             f"{A[k-1, -1]:.4f}")])))
 
-    f = go.Figure(data=[go.Heatmap(z=np.full_like(A, np.nan), x=src_t, y=out_t,
+    _Z0 = np.full_like(A, np.nan)
+    _Z0[0] = A[0]          # seed one real row so the colour scale is set
+    f = go.Figure(data=[go.Heatmap(z=_Z0, x=src_lab, y=out_t,
                                    colorscale=nav.cscale(), zmin=0,
                                    zmax=A.max(), xgap=2, ygap=2,
                                    colorbar=dict(title="α"))])
     f.update_layout(height=480, xaxis_title="source token",
                     yaxis_title="generated token",
-                    yaxis=dict(autorange="reversed"),
+                    xaxis=dict(type="category"),
+                    yaxis=dict(type="category", autorange="reversed"),
                     title="Alignment learned by attention — note it is NOT diagonal")
     anim.animate(f, frames, duration=nav.anim_ms(520), slider_prefix="step ")
     figure(f, "The year is written first in the output but comes last in the "
@@ -2450,7 +2457,9 @@ def s_16_7():
             f"{sim[-1]/2*d_model/d_model*2:.2f}   ·   similarity decays "
             f"smoothly with distance, so 'nearby' is expressible")])))
 
-    f = go.Figure(data=[go.Heatmap(z=np.full((n_pos, d_model), np.nan),
+    _P0 = np.full((n_pos, d_model), np.nan)
+    _P0[0] = PE[0]
+    f = go.Figure(data=[go.Heatmap(z=_P0,
                                    colorscale=nav.cscale(), zmin=-1, zmax=1,
                                    colorbar=dict(title="value"))])
     f.update_layout(height=460, xaxis_title="embedding dimension",

@@ -1,5 +1,13 @@
 # ML Platform
 
+**by Dr Merwan Roudane**
+
+[![author](https://img.shields.io/badge/author-Dr%20Merwan%20Roudane-6C4DF6)](https://github.com/merwanroudane)
+[![python](https://img.shields.io/badge/python-3.11%2B-3776AB)](https://www.python.org/)
+[![streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B)](https://streamlit.io/)
+[![sub-sections](https://img.shields.io/badge/sub--sections-203-00C2A8)](#course-contents)
+[![labs](https://img.shields.io/badge/code%20labs-171-00C2A8)](#using-the-code-labs)
+
 An interactive, executable machine-learning course. Nineteen chapters and five
 appendices, **203 sub-sections**, each carrying a full lecture, the mathematics
 written out rather than cited, a Plotly animation you drive with a play button,
@@ -21,6 +29,7 @@ Opens on <http://localhost:8501>.
 ## Table of contents
 
 - [What this is](#what-this-is)
+- [Screenshots](#screenshots)
 - [At a glance](#at-a-glance)
 - [Installation](#installation)
 - [The anatomy of a sub-section](#the-anatomy-of-a-sub-section)
@@ -41,6 +50,7 @@ Opens on <http://localhost:8501>.
 - [Performance notes](#performance-notes)
 - [Troubleshooting](#troubleshooting)
 - [Sources and originality](#sources-and-originality)
+- [Author](#author)
 
 ---
 
@@ -73,6 +83,53 @@ a GRU, multi-head attention, a reverse-mode autodiff engine, beam search, BPE
 tokenisation, PPO's clipped objective, DDPM sampling — each is implemented from
 scratch in NumPy and then checked against the library version, usually agreeing
 to around 1e-6. The library stops being magic.
+
+---
+
+## Screenshots
+
+**The course home** — every chapter opens with an animation you drive. Here the
+polynomial degree sweeps 1 → 20 and you watch training error fall forever while
+test error turns around.
+
+![Course home](docs/screenshots/01-home.png)
+
+**A lecture** — prose, real KaTeX mathematics, and the callouts that carry the
+warnings worth having: a result, a common pitfall, a table of sampling
+strategies.
+
+![A lecture page](docs/screenshots/02-lecture.png)
+
+**An animation** — ▶ Play, ⏸ Pause, ⏮ Reset and a scrub slider on every one.
+This is §15.8 showing how an LSTM's forget gate chooses its own decay rate.
+
+![An animation with play controls](docs/screenshots/03-animation.png)
+
+**A code lab** — editable, runnable, with a persistent namespace. Every lab sits
+directly under the derivation it demonstrates.
+
+![A code lab](docs/screenshots/04-codelab.png)
+
+**The Foundations appendix** — double descent reproduced in plain least squares,
+annotated live: at *p* = 91 features on *n* = 40 examples the training error is
+6.7 × 10⁻³⁰ and the test error is still falling.
+
+![Foundations: double descent](docs/screenshots/05-foundations.png)
+
+**The AI Lab** — six workbenches. The supervised bench fits any of 13 models
+with every hyperparameter exposed, then shows the decision surface, the
+metrics, and the misclassified points.
+
+![The AI Lab supervised bench](docs/screenshots/06-ailab.png)
+
+**The searchable syllabus** — every sub-section tagged by concept.
+
+![The syllabus](docs/screenshots/07-syllabus.png)
+
+**The mathematics appendix** — matrix calculus with each identity checked
+numerically in the lab beneath it.
+
+![The mathematics appendix](docs/screenshots/08-math.png)
 
 ---
 
@@ -587,4 +644,16 @@ engine.
 
 ---
 
-**Dr Merwan Roudane** · <merwanroudane920@gmail.com> · <https://github.com/merwanroudane>
+## Author
+
+**Dr Merwan Roudane**
+
+- GitHub — <https://github.com/merwanroudane>
+- Email — <merwanroudane920@gmail.com>
+
+Author of the CRAN packages **QuantileOnQuantile**, **mqqr**, **qqkrls** and
+**mqqcause**.
+
+Every lecture, derivation, animation, dataset and code lab on this platform was
+written by the author. If you use the material in teaching or research, a
+citation or a link back is appreciated.

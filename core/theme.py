@@ -59,6 +59,12 @@ PLOTLY_CONFIG = {
 
 _CSS = f"""
 <style>
+/* inline maths from tex() carries its own colour, which is wrong on a
+   coloured ground -- inherit instead inside heroes and headings */
+.mp-hero p span, .mp-hero h1 span, .mp-sub span, .mp-sec h2 span {{
+  color: inherit !important;
+}}
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 html, body, [class*="css"] {{
