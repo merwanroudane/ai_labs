@@ -51,9 +51,14 @@ def _tf_available() -> bool:
 TF_OK = _tf_available()
 if not TF_OK:
     st.warning(
-        "TensorFlow is not importable in this environment, so the Keras labs "
-        "below will report an ImportError when run. Every explanation, animation "
-        "and NumPy-only lab still works.", icon="⚠️")
+        "**TensorFlow is not installed in this environment**, so the Keras "
+        "labs on this page cannot run — every explanation, animation, "
+        "derivation and NumPy-only lab still works. This is expected on the "
+        "hosted demo, where TensorFlow needs more memory than the free tier "
+        "allows. To run the labs, clone "
+        "[the repository](https://github.com/merwanroudane/ai_labs) and "
+        "install with `pip install -r requirements-local.txt`.",
+        icon="⚠️")
 
 
 # ==========================================================================

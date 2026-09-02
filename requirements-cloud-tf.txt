@@ -1,0 +1,19 @@
+# ML Platform — deployment WITH the deep-learning labs.
+#
+# Use this only on a host with more than ~2 GB of RAM and a few GB of
+# build disk (Hugging Face Spaces, Render, Fly.io, a VM). It will not fit
+# on Streamlit Community Cloud's free tier.
+#
+# Rename to requirements.txt on the target, or point the platform at it.
+
+streamlit>=1.40
+numpy>=1.26
+pandas>=2.0
+plotly>=5.20
+scikit-learn>=1.4
+scipy>=1.11
+matplotlib>=3.8
+statsmodels>=0.14
+
+# CPU build only -- `tensorflow` would resolve the CUDA wheels
+tensorflow-cpu>=2.16,<2.22

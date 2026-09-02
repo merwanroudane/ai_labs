@@ -48,9 +48,15 @@ def _tf_ok() -> bool:
 
 
 if not _tf_ok():
-    st.warning("TensorFlow is not importable here, so the labs will report an "
-               "ImportError. Every explanation and animation still works.",
-               icon="⚠️")
+    st.warning(
+        "**TensorFlow is not installed in this environment**, so the code "
+        "labs on this page cannot run — the lecture, the mathematics and "
+        "the animation all work normally. This is expected on the hosted "
+        "demo, where TensorFlow needs more memory than the free tier "
+        "allows. To run the labs, clone "
+        "[the repository](https://github.com/merwanroudane/ai_labs) and "
+        "install with `pip install -r requirements-local.txt`.",
+        icon="⚠️")
 
 
 # ==========================================================================

@@ -1,12 +1,22 @@
 # ML Platform — deployment requirements (Streamlit Community Cloud)
 #
-# Deliberately lean. On Linux the plain `tensorflow` wheel drags in the whole
-# NVIDIA CUDA stack (nvidia-cublas-cu12, nvidia-cudnn-cu12, …), several GB of
-# wheels that blow Streamlit Cloud's disk quota and abort the install.
-# `tensorflow-cpu` is the same library without those, and Cloud has no GPU
-# anyway.
+# Every package here has a manylinux wheel for Python 3.11-3.13, so the
+# build is fast and cannot fail on a missing compiler.
 #
-# For a full local install, including the optional extras, use:
+# TensorFlow is deliberately NOT here. Two reasons:
+#   1. the plain `tensorflow` wheel pulls the whole NVIDIA CUDA stack on
+#      Linux (several GB) and blows the build disk;
+#   2. even `tensorflow-cpu`, which fits, imports at ~500 MB resident --
+#      against Streamlit Cloud's 1 GB ceiling the Part II labs would be
+#      killed the moment they trained anything.
+#
+# So the cloud build serves the full course text, every animation and
+# every lab that does not need TensorFlow (chapters 1-9, Foundations,
+# Mathematics, Autodiff, the checklist, the glossary and the AI Lab).
+# Chapters 10-19 keep their lectures, mathematics and animations; their
+# labs report that TensorFlow is unavailable and say how to get it.
+#
+# For the complete platform, including the deep-learning labs:
 #     pip install -r requirements-local.txt
 
 streamlit>=1.40
@@ -16,9 +26,4 @@ plotly>=5.20
 scikit-learn>=1.4
 scipy>=1.11
 matplotlib>=3.8
-
-# deep learning — chapters 10-19
-tensorflow-cpu>=2.16,<2.22
-
-# the only optional package small enough to be worth shipping (§15.3 SARIMA)
 statsmodels>=0.14

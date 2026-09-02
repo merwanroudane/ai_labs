@@ -156,8 +156,9 @@ numerically in the lab beneath it.
 
 | File | For | Contains |
 |---|---|---|
-| `requirements.txt` | **Deployment** (Streamlit Cloud) | Core + `tensorflow-cpu` + `statsmodels`. Deliberately lean. |
-| `requirements-local.txt` | **Local development** | The above plus every optional package |
+| `requirements.txt` | **Streamlit Cloud** | Core only — no TensorFlow. Builds in under a minute. |
+| `requirements-local.txt` | **Local development** | Everything, including the deep-learning stack |
+| `requirements-cloud-tf.txt` | A host with real memory | Core + `tensorflow-cpu` |
 
 ```bash
 pip install -r requirements-local.txt      # local, everything
@@ -538,39 +539,49 @@ chapter 4 as it does in chapter 19.
 
 ### Streamlit Community Cloud
 
-Point it at `app.py` on the `main` branch. `runtime.txt` pins Python 3.11 and
-`requirements.txt` is already sized for the platform's limits.
+Point it at `app.py` on `main`. `requirements.txt` is already sized for the free
+tier and contains **no TensorFlow**, which is deliberate.
 
-Two things matter, and both are already handled in this repository:
+**What you get on the free tier**
 
-**Use `tensorflow-cpu`, never `tensorflow`.** On Linux the plain wheel resolves
-the CUDA dependencies and downloads several GB. Cloud's build disk is smaller
-than that, so pip aborts and you get *"Error installing requirements"* with
-`installer returned a non-zero exit code` in the log.
+| Works fully | Lectures, mathematics and animations only |
+|---|---|
+| Chapters 1–9, Foundations, Mathematics, Autodiff, checklist, glossary, syllabus, **the whole AI Lab** | Chapters 10–19 — text, derivations and animations all work; their labs report that TensorFlow is missing and link to the local install |
 
-**Do not import TensorFlow at page load.** Every chapter page checks whether
-TensorFlow is available so it can warn you if it is not. Doing that with
-`import tensorflow` costs roughly 500 MB of resident memory against Cloud's
-1 GB ceiling — before a single lab has run. The pages use
-`importlib.util.find_spec("tensorflow")` instead, which answers the same
-question for nothing. As a side effect, chapter pages load two to three times
-faster.
+That is 100+ sub-sections and every animation, with roughly 90 runnable labs.
 
-The optional packages — `transformers`, `tensorflow-datasets`, `keras-tuner`,
-`tensorboard`, `sympy` — are deliberately **not** in the deployment
-requirements. The five labs that use them detect the absence, print the install
-command and fall back, so nothing breaks.
+**Why TensorFlow is excluded.** Two independent limits, and it fails both:
+
+1. **Build disk.** On Linux the plain `tensorflow` wheel resolves the entire
+   NVIDIA CUDA stack — `nvidia-cublas-cu12`, `nvidia-cudnn-cu12` and the rest,
+   several GB. pip aborts and you get *"Error installing requirements"* with
+   `installer returned a non-zero exit code`. `tensorflow-cpu` avoids the CUDA
+   payload and does fit.
+2. **Memory.** Cloud gives **1 GB of RAM**. Importing TensorFlow costs ~500 MB
+   before a single lab runs, and the Part II labs train real models on top of
+   that. Even with a successful build, they would be OOM-killed.
+
+So excluding it is not a workaround, it is the correct configuration for that
+host. To deploy *with* the labs, use `requirements-cloud-tf.txt` on something
+with more headroom — Hugging Face Spaces, Render, Fly.io, or any VM with ~2 GB.
+
+**A related fix worth knowing about.** Every chapter page checks whether
+TensorFlow is present so it can warn you. Doing that with `import tensorflow`
+costs ~500 MB of resident memory just to answer a yes/no question. The pages use
+`importlib.util.find_spec("tensorflow")` instead, which costs nothing. Chapter
+pages render two to three times faster as a result — chapter 10 went from 23.3 s
+to 7.6 s in the smoke test.
 
 ### Anywhere else
 
 ```bash
 pip install -r requirements-local.txt
-streamlit run app.py --server.port 8501
+streamlit run app.py
 ```
 
-Nothing else is needed. The platform has no database, no API keys and no
-network calls at runtime — every dataset either ships with scikit-learn or is
-generated from a seeded RNG.
+Nothing else is needed. The platform has no database, no API keys and no network
+calls at runtime — every dataset either ships with scikit-learn or is generated
+from a seeded RNG.
 
 ---
 
