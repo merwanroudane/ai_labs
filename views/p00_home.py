@@ -272,6 +272,11 @@ st.markdown(
              style="text-decoration:none;background:#fff;border:1px solid #E6E3F5;
                     border-radius:9px;padding:6px 13px;font-size:.85rem;
                     color:{C['primary']};font-weight:650">Source</a>
+          <a href="https://ailabo.streamlit.app/" target="_blank"
+             style="text-decoration:none;background:{C['primary']};
+                    border:1px solid {C['primary']};
+                    border-radius:9px;padding:6px 13px;font-size:.85rem;
+                    color:#fff;font-weight:650">Live app</a>
         </div>
       </div>
     </div>

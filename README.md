@@ -2,6 +2,8 @@
 
 **by Dr Merwan Roudane**
 
+[![live demo](https://img.shields.io/badge/▶_live_demo-ailabo.streamlit.app-FF4B4B?style=for-the-badge)](https://ailabo.streamlit.app/)
+
 [![author](https://img.shields.io/badge/author-Dr%20Merwan%20Roudane-6C4DF6)](https://github.com/merwanroudane)
 [![python](https://img.shields.io/badge/python-3.11%2B-3776AB)](https://www.python.org/)
 [![streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B)](https://streamlit.io/)
@@ -15,19 +17,34 @@ and a code lab you can edit and run without leaving the page.
 
 Built with Streamlit. Runs offline. Nothing is abbreviated.
 
+### Try it now
+
+**▶ [ailabo.streamlit.app](https://ailabo.streamlit.app/)** — no install, runs in
+the browser.
+
+The hosted build serves the whole course: every lecture, all the mathematics,
+all 203 animations, and every lab that does not need TensorFlow — chapters 1–9,
+Foundations, Mathematics, Autodiff, the checklist, the glossary and the entire
+AI Lab. Chapters 10–19 keep their lectures, derivations and animations; only
+their Keras labs need a local install, because TensorFlow does not fit in the
+free tier's 1 GB. See [Deploying](#deploying).
+
+### Run it locally
+
 ```bash
 git clone https://github.com/merwanroudane/ai_labs.git
 cd ai_labs
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 streamlit run app.py
 ```
 
-Opens on <http://localhost:8501>.
+Opens on <http://localhost:8501>, with every lab runnable.
 
 ---
 
 ## Table of contents
 
+- [Try it now](#try-it-now)
 - [What this is](#what-this-is)
 - [Screenshots](#screenshots)
 - [At a glance](#at-a-glance)
@@ -539,6 +556,8 @@ chapter 4 as it does in chapter 19.
 
 ### Streamlit Community Cloud
 
+The live instance is **<https://ailabo.streamlit.app/>**.
+
 Point it at `app.py` on `main`. `requirements.txt` is already sized for the free
 tier and contains **no TensorFlow**, which is deliberate.
 
@@ -713,6 +732,7 @@ engine.
 
 **Dr Merwan Roudane**
 
+- Live platform — <https://ailabo.streamlit.app/>
 - GitHub — <https://github.com/merwanroudane>
 - Email — <merwanroudane920@gmail.com>
 

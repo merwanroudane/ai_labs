@@ -117,6 +117,10 @@ with st.sidebar:
             <a href="https://github.com/merwanroudane" target="_blank"
                style="color:#6C4DF6;text-decoration:none">github.com/merwanroudane</a>
           </div>
+          <div style="margin-top:2px">
+            <a href="https://ailabo.streamlit.app/" target="_blank"
+               style="color:#6C4DF6;text-decoration:none">ailabo.streamlit.app</a>
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
