@@ -1,9 +1,14 @@
-# ML Platform — interactive Hands-On Machine Learning course
+# ML Platform — deployment requirements (Streamlit Community Cloud)
 #
-#   pip install -r requirements.txt
-#   streamlit run app.py
+# Deliberately lean. On Linux the plain `tensorflow` wheel drags in the whole
+# NVIDIA CUDA stack (nvidia-cublas-cu12, nvidia-cudnn-cu12, …), several GB of
+# wheels that blow Streamlit Cloud's disk quota and abort the install.
+# `tensorflow-cpu` is the same library without those, and Cloud has no GPU
+# anyway.
+#
+# For a full local install, including the optional extras, use:
+#     pip install -r requirements-local.txt
 
-# ---- core: required, the platform will not start without these -------
 streamlit>=1.40
 numpy>=1.26
 pandas>=2.0
@@ -12,17 +17,8 @@ scikit-learn>=1.4
 scipy>=1.11
 matplotlib>=3.8
 
-# ---- deep learning: required for chapters 10-19 ----------------------
-# Linux/WSL with an NVIDIA GPU:  pip install "tensorflow[and-cuda]"
-# macOS on Apple silicon:        pip install tensorflow tensorflow-metal
-tensorflow>=2.16
+# deep learning — chapters 10-19
+tensorflow-cpu>=2.16,<2.22
 
-# ---- optional -------------------------------------------------------
-# Every one of these affects exactly one lab, which detects its absence,
-# prints the install command, and continues with a fallback.
-statsmodels>=0.14        # SARIMA comparison, section 15.3
-sympy>=1.12              # symbolic-differentiation demo, section B.1
-transformers>=4.40       # Hugging Face pipeline, section 16.9
-tensorboard>=2.16        # the TensorBoard callback, section 10.7
-keras-tuner>=1.4         # hyperparameter search, section 10.8
-tensorflow-datasets      # a few dataset loaders
+# the only optional package small enough to be worth shipping (§15.3 SARIMA)
+statsmodels>=0.14

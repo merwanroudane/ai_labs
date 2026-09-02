@@ -39,9 +39,11 @@ nav.sidebar_tools(CH)
 
 # --------------------------------------------------------------------------
 def _tf_available() -> bool:
+    # find_spec, not import: importing TensorFlow costs ~500 MB of RSS and we
+    # only need to know whether the labs will be able to run.
+    import importlib.util
     try:
-        import tensorflow  # noqa: F401
-        return True
+        return importlib.util.find_spec("tensorflow") is not None
     except Exception:
         return False
 

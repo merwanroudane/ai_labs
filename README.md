@@ -45,6 +45,7 @@ Opens on <http://localhost:8501>.
 - [The lecture DSL](#the-lecture-dsl)
 - [Datasets](#datasets)
 - [Colour and theming](#colour-and-theming)
+- [Deploying](#deploying)
 - [Testing](#testing)
 - [Extending the platform](#extending-the-platform)
 - [Performance notes](#performance-notes)
@@ -151,10 +152,16 @@ numerically in the lab beneath it.
 
 ## Installation
 
-### Minimum
+### Two requirements files
+
+| File | For | Contains |
+|---|---|---|
+| `requirements.txt` | **Deployment** (Streamlit Cloud) | Core + `tensorflow-cpu` + `statsmodels`. Deliberately lean. |
+| `requirements-local.txt` | **Local development** | The above plus every optional package |
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-local.txt      # local, everything
+pip install -r requirements.txt            # or just what deploys
 ```
 
 Core requirements — the platform will not start without them:
@@ -170,6 +177,13 @@ Core requirements — the platform will not start without them:
 | `tensorflow >= 2.16` | Chapters 10–19 |
 
 ### GPU
+
+The requirements pin **`tensorflow-cpu`** on purpose. On Linux the plain
+`tensorflow` wheel drags in the entire NVIDIA CUDA stack — `nvidia-cublas-cu12`,
+`nvidia-cudnn-cu12` and friends, several GB of wheels. That is wasted on a
+machine with no GPU, and it is enough to abort a Streamlit Cloud build.
+
+For an actual GPU, replace that line with one of:
 
 ```bash
 # Linux or WSL2 with an NVIDIA card
@@ -517,6 +531,46 @@ alpha("#6C4DF6", .3)
 The semantic role colours (`train`, `valid`, `test`, `truth`, `pred`) are used
 consistently across all 203 sub-sections, so a blue line means the same thing in
 chapter 4 as it does in chapter 19.
+
+---
+
+## Deploying
+
+### Streamlit Community Cloud
+
+Point it at `app.py` on the `main` branch. `runtime.txt` pins Python 3.11 and
+`requirements.txt` is already sized for the platform's limits.
+
+Two things matter, and both are already handled in this repository:
+
+**Use `tensorflow-cpu`, never `tensorflow`.** On Linux the plain wheel resolves
+the CUDA dependencies and downloads several GB. Cloud's build disk is smaller
+than that, so pip aborts and you get *"Error installing requirements"* with
+`installer returned a non-zero exit code` in the log.
+
+**Do not import TensorFlow at page load.** Every chapter page checks whether
+TensorFlow is available so it can warn you if it is not. Doing that with
+`import tensorflow` costs roughly 500 MB of resident memory against Cloud's
+1 GB ceiling — before a single lab has run. The pages use
+`importlib.util.find_spec("tensorflow")` instead, which answers the same
+question for nothing. As a side effect, chapter pages load two to three times
+faster.
+
+The optional packages — `transformers`, `tensorflow-datasets`, `keras-tuner`,
+`tensorboard`, `sympy` — are deliberately **not** in the deployment
+requirements. The five labs that use them detect the absence, print the install
+command and fall back, so nothing breaks.
+
+### Anywhere else
+
+```bash
+pip install -r requirements-local.txt
+streamlit run app.py --server.port 8501
+```
+
+Nothing else is needed. The platform has no database, no API keys and no
+network calls at runtime — every dataset either ships with scikit-learn or is
+generated from a seeded RNG.
 
 ---
 
