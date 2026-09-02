@@ -33,6 +33,11 @@ hero(
            "reproducibility notes"],
 )
 
+st.caption(
+    "ML Platform — developed by **Dr Merwan Roudane** · "
+    "[github.com/merwanroudane](https://github.com/merwanroudane)"
+)
+
 
 REQUIRED = [
     ("streamlit", "streamlit", "The platform itself", "core"),

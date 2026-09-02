@@ -17,7 +17,7 @@ inject()
 CH = "syllabus"
 
 hero(
-    kicker="Start here",
+    kicker="Start here · developed by Dr Merwan Roudane",
     title="Full syllabus & search",
     blurb=(
         "Every chapter, every sub-section, every code lab — 190 sub-sections "

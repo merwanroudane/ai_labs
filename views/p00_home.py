@@ -14,7 +14,7 @@ from core.theme import inject
 inject()
 
 hero(
-    kicker="Interactive course · 19 chapters · 4 appendices",
+    kicker="Interactive course · developed by Dr Merwan Roudane",
     title="Hands-On Machine Learning — the interactive platform",
     blurb=(
         "Every chapter is a full lecture: the intuition, the complete mathematics "
@@ -227,4 +227,61 @@ keypoints(
         "labs degrade to NumPy implementations rather than crashing.",
     ],
     title="Platform features",
+)
+
+# --------------------------------------------------------------------------
+# Developer
+# --------------------------------------------------------------------------
+
+rule()
+section("👤", "The developer")
+
+st.markdown(
+    f"""
+    <div style="display:flex;gap:20px;align-items:flex-start;
+                background:linear-gradient(135deg,#F6F4FF,#EFFBF8);
+                border:1px solid #E6E3F5;border-radius:16px;
+                padding:22px 24px;margin:6px 0 4px 0">
+      <div style="width:64px;height:64px;flex:0 0 64px;border-radius:18px;
+                  background:linear-gradient(135deg,#6C4DF6,#00C2A8);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:27px;color:#fff;font-weight:800">MR</div>
+      <div style="flex:1">
+        <div style="font-size:1.22rem;font-weight:800;color:{C['ink']};
+                    line-height:1.2">Dr Merwan Roudane</div>
+        <div style="font-size:.93rem;color:{C['primary']};font-weight:650;
+                    margin:3px 0 10px 0">
+          Developer &amp; author of this platform</div>
+        <div style="font-size:.92rem;color:{C['ink_soft']};line-height:1.62">
+          Every lecture, derivation, animation, dataset and code lab on this
+          platform &mdash; 203 sub-sections, 171 executable labs, roughly 66 900
+          lines of Python &mdash; was designed and written by the author.
+          Author of the CRAN packages <b>QuantileOnQuantile</b>, <b>mqqr</b>,
+          <b>qqkrls</b> and <b>mqqcause</b>.
+        </div>
+        <div style="margin-top:13px;display:flex;gap:9px;flex-wrap:wrap">
+          <a href="https://github.com/merwanroudane" target="_blank"
+             style="text-decoration:none;background:#fff;border:1px solid #E6E3F5;
+                    border-radius:9px;padding:6px 13px;font-size:.85rem;
+                    color:{C['primary']};font-weight:650">GitHub</a>
+          <a href="mailto:merwanroudane920@gmail.com"
+             style="text-decoration:none;background:#fff;border:1px solid #E6E3F5;
+                    border-radius:9px;padding:6px 13px;font-size:.85rem;
+                    color:{C['primary']};font-weight:650">Email</a>
+          <a href="https://github.com/merwanroudane/ai_labs" target="_blank"
+             style="text-decoration:none;background:#fff;border:1px solid #E6E3F5;
+                    border-radius:9px;padding:6px 13px;font-size:.85rem;
+                    color:{C['primary']};font-weight:650">Source</a>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.caption(
+    "Chapter ordering follows *Hands-On Machine Learning with Scikit-Learn, "
+    "Keras & TensorFlow* (A. Géron, 3rd ed.) as a syllabus. All lecture text, "
+    "derivations, animations and code here are original; no text or figures "
+    "are reproduced from the book."
 )

@@ -28,7 +28,7 @@ inject()
 CH = "ailab"
 
 hero(
-    kicker="Labs & Reference",
+    kicker="Labs & Reference · built by Dr Merwan Roudane",
     title="AI Lab · live model workbench",
     blurb=(
         "Everything in the nineteen chapters, wired to knobs. Load a dataset, "

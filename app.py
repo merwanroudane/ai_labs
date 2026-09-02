@@ -19,7 +19,7 @@ import streamlit as st
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 st.set_page_config(
-    page_title="ML Platform · Hands-On Machine Learning",
+    page_title="ML Platform · Dr Merwan Roudane",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -92,6 +92,12 @@ with st.sidebar:
               19 chapters · animated · executable</div>
           </div>
         </div>
+        <div style="margin:2px 0 0 49px;font-size:.72rem;color:#7A8199">
+          developed by
+          <a href="https://github.com/merwanroudane" target="_blank"
+             style="color:#6C4DF6;font-weight:650;text-decoration:none">
+            Dr Merwan Roudane</a>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -101,6 +107,20 @@ nav.run()
 
 with st.sidebar:
     st.markdown("<hr style='margin:18px 0 10px 0'/>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="font-size:.74rem;line-height:1.5;color:#7A8199">
+          <div style="color:#0E1428;font-weight:700;margin-bottom:2px">
+            Dr Merwan Roudane</div>
+          <div>Developer &amp; author of this platform</div>
+          <div style="margin-top:5px">
+            <a href="https://github.com/merwanroudane" target="_blank"
+               style="color:#6C4DF6;text-decoration:none">github.com/merwanroudane</a>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.caption(
         "Original lecture material written for this platform. "
         "Chapter ordering follows *Hands-On Machine Learning with "
