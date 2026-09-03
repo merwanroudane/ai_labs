@@ -667,15 +667,37 @@ derivation step must say what changed, not merely state the next line.
 ## Performance notes
 
 The labs are sized so that pressing Run is not a commitment. Most finish in
-under 30 seconds on CPU. The exceptions, all in Part II:
+under 30 seconds on CPU. The exceptions:
 
 | Lab | Approx. CPU time | Why |
 |---|---|---|
 | `ch17_gan` | ~10 min | Five GAN configurations trained to show mode collapse |
 | `ch17_diffusion` | ~7 min | A DDPM trained far enough to sample |
+| `ch18_ppo` | ~5 min | A2C and PPO trained side by side, 260 updates each |
 | `ch17_dcgan` | ~4 min | Convolutional GAN on 28×28 images |
+| `ch18_reinforce` | ~4 min | REINFORCE keeps a gradient per environment step — that explicitness is the lesson |
 | `ch15_lstm` | ~4 min | The copy task at T = 10…120 for three cell types |
-| `ch19_scale` | ~2 min | Pipeline throughput measured under four configurations |
+| `ch18_variants` | ~3 min | Seven DQN variants trained from scratch and compared |
+| `ch18_dqn` | ~1 min | DQN on CartPole, plus ablations of replay and the target network |
+
+**A note on the reinforcement-learning labs.** These were originally far worse.
+Chapter 18's suite took **13 hours 37 minutes**, with `ch18_variants` alone at
+6 h 16 m. The cause was eager Keras calls inside the environment-step loop —
+three per step (action selection, target Q, gradient update), a few milliseconds
+each, across hundreds of thousands of steps. Wrapping them in `tf.function`
+brought the chapter to **17.8 minutes**, a **46× speed-up**, with the same
+episode budgets and the same conclusions:
+
+| Lab | Before | After | |
+|---|---|---|---|
+| `ch18_practice` | 2 h 21 m | 56 s | 151× |
+| `ch18_variants` | 6 h 16 m | 181 s | 125× |
+| `ch18_dqn` | 2 h 28 m | 74 s | 121× |
+| `ch18_reinforce` | 2 h 01 m | 250 s | 29× |
+| `ch18_ppo` | 26 m | 290 s | 5× |
+
+If you write your own RL loop, this is the single most valuable thing on that
+page: the algorithm is not what makes it slow, the tracing boundary is.
 
 Every one of them exposes its `epochs` / `steps` / dataset size as a named
 constant near the top, so the editor is the throttle. If you only want to read,

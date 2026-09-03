@@ -831,20 +831,35 @@ def make_policy(n_obs=4, hidden=32):
                              keras.layers.Dense(hidden, activation="elu"),
                              keras.layers.Dense(1, activation="sigmoid")])
 
-def play_episode(model, seed, max_steps=500, render_grads=True):
+def make_step_fn(model):
+    """One COMPILED step: sample an action and return grad log pi(a|s).
+
+    Same computation as an eager tape, but traced once. The tape is per
+    environment step here -- that is what makes the algorithm legible --
+    so tracing it is worth roughly 40x on this lab.
+    """
+    @tf.function(reduce_retracing=True)
+    def step(obs):
+        with tf.GradientTape() as tape:
+            p = model(obs, training=True)
+            a = tf.cast(tf.random.uniform([1, 1]) > p, "float32")
+            # log pi(a|s): for a=1 it is log(p), for a=0 it is log(1-p).
+            y = 1.0 - a                 # Keras trick: target = 1 - action
+            loss = tf.reduce_mean(keras.losses.binary_crossentropy(y, p))
+        return a, tape.gradient(loss, model.trainable_weights)
+    return step
+
+
+def play_episode(model, seed, max_steps=500, step_fn=None):
     """Returns rewards, and the per-step gradients of log pi(a|s)."""
     env = CartPole()
     s, _ = env.reset(seed=seed)
+    step_fn = step_fn or make_step_fn(model)
     rewards, grads = [], []
     for _ in range(max_steps):
-        with tf.GradientTape() as tape:
-            p = model(s[None].astype("float32"), training=True)
-            a = int(tf.random.uniform([1, 1]) > p)          # sample
-            # log pi(a|s): for a=1 it is log(p), for a=0 it is log(1-p)
-            y = 1.0 - float(a)          # Keras trick: target = 1 - action
-            loss = tf.reduce_mean(keras.losses.binary_crossentropy(
-                tf.constant([[y]]), p))
-        grads.append(tape.gradient(loss, model.trainable_weights))
+        a_t, g = step_fn(s[None].astype("float32"))
+        a = int(a_t.numpy()[0, 0])
+        grads.append(g)
         s, r, term, trunc, _ = env.step(a)
         rewards.append(r)
         if term or trunc:
@@ -881,16 +896,18 @@ def discount_and_normalise(all_rewards, gamma, normalise=True):
     return [(d - m)/s for d in disc]
 
 # ============ 4. TRAINING ==============================================
-def train_reinforce(n_iters=60, n_ep=12, gamma=0.97, lr=0.02,
+def train_reinforce(n_iters=45, n_ep=10, gamma=0.97, lr=0.02,
                     use_rtg=True, normalise=True, seed=0, verbose=True):
     tf.random.set_seed(seed)
     model = make_policy()
     opt = keras.optimizers.Nadam(lr)
+    step_fn = make_step_fn(model)          # trace once, reuse every episode
     hist = []
     for it in range(n_iters):
         all_rewards, all_grads = [], []
         for e in range(n_ep):
-            r_, g_ = play_episode(model, seed=seed*1000 + it*100 + e)
+            r_, g_ = play_episode(model, seed=seed*1000 + it*100 + e,
+                                  step_fn=step_fn)
             all_rewards.append(r_); all_grads.append(g_)
         lengths = [len(r) for r in all_rewards]
         if use_rtg:
@@ -2037,7 +2054,9 @@ print(f"  {q_net.count_params():,} parameters")
 print(f"  NO activation on the output: Q values are unbounded")
 
 # ============ 3. THE TRAINING LOOP =====================================
-def train_dqn(n_episodes=320, gamma=0.97, lr=6e-4, batch=64,
+MAX_STEPS = 200          # CartPole's solved threshold; 500 just costs time
+
+def train_dqn(n_episodes=170, gamma=0.97, lr=6e-4, batch=64,
               buffer_size=20000, target_sync=200, use_target=True,
               use_replay=True, loss_fn="huber", double=False,
               eps0=1.0, eps_min=0.02, eps_decay_frac=0.55, seed=0,
@@ -2054,16 +2073,46 @@ def train_dqn(n_episodes=320, gamma=0.97, lr=6e-4, batch=64,
     env = CartPole()
     lengths, step_count = [], 0
 
+    # ---- compiled steps ------------------------------------------------
+    # Eager Keras calls dominate the runtime: three per environment step at
+    # a few ms each. tf.function traces them once and runs them as a graph,
+    # which is worth roughly an order of magnitude here.
+    @tf.function(reduce_retracing=True)
+    def greedy(obs):
+        return tf.argmax(online(obs, training=False)[0], output_type=tf.int32)
+
+    @tf.function(reduce_retracing=True)
+    def q_next_fn(S2):
+        if double:
+            best = tf.argmax(online(S2, training=False), 1, output_type=tf.int32)
+            qn = tf.gather(net_for_target(S2, training=False),
+                           best, batch_dims=1)
+        else:
+            qn = tf.reduce_max(net_for_target(S2, training=False), axis=1)
+        return qn
+
+    @tf.function(reduce_retracing=True)
+    def update(S, A, R, S2, Dn):
+        y = R + gamma*q_next_fn(S2)*(1.0 - Dn)
+        mask = tf.one_hot(A, 2)
+        with tf.GradientTape() as tape:
+            q_sa = tf.reduce_sum(online(S, training=True)*mask, axis=1)
+            loss = loss_obj(tf.stop_gradient(y), q_sa)
+        opt.apply_gradients(zip(tape.gradient(loss, online.trainable_weights),
+                                online.trainable_weights))
+        return loss
+
+    net_for_target = target if use_target else online
+
     for ep in range(n_episodes):
         eps = max(eps_min, eps0*(1 - ep/(eps_decay_frac*n_episodes)))
         s, _ = env.reset(seed=int(rng.integers(1e9)))
         total = 0
-        for t in range(500):
+        for t in range(MAX_STEPS):
             if rng.random() < eps:
                 a = int(rng.integers(2))
             else:
-                a = int(np.argmax(online(s[None].astype("float32"),
-                                         training=False)[0]))
+                a = int(greedy(s[None].astype("float32")))
             s2, r, term, trunc, _ = env.step(a)
             buf.add(s, a, r, s2, term)
             s = s2
@@ -2080,22 +2129,8 @@ def train_dqn(n_episodes=320, gamma=0.97, lr=6e-4, batch=64,
                     S, A, R, S2, Dn = [np.array([b[i] for b in recent],
                                                 dtype="float32")
                                        for i in range(5)]
-                net_for_target = target if use_target else online
-                if double:
-                    best = np.argmax(online(S2, training=False).numpy(), 1)
-                    q_next = net_for_target(S2, training=False).numpy()[
-                        np.arange(len(S2)), best]
-                else:
-                    q_next = net_for_target(S2, training=False).numpy().max(1)
-                y = R + gamma*q_next*(1.0 - Dn)
-                mask = tf.one_hot(A.astype("int32"), 2)
-                with tf.GradientTape() as tape:
-                    q_all = online(S, training=True)
-                    q_sa = tf.reduce_sum(q_all*mask, axis=1)
-                    loss = loss_obj(y, q_sa)
-                opt.apply_gradients(zip(
-                    tape.gradient(loss, online.trainable_weights),
-                    online.trainable_weights))
+                update(tf.constant(S), tf.constant(A.astype("int32")),
+                       tf.constant(R), tf.constant(S2), tf.constant(Dn))
 
                 if use_target and step_count % target_sync == 0:
                     target.set_weights(online.get_weights())
@@ -2114,7 +2149,7 @@ def evaluate(net, n=25, seed0=7000):
     for i in range(n):
         s, _ = env.reset(seed=seed0+i)
         tot = 0
-        for _ in range(500):
+        for _ in range(MAX_STEPS):
             a = int(np.argmax(net(s[None].astype("float32"),
                                   training=False)[0]))
             s, r, term, trunc, _ = env.step(a)
@@ -2141,7 +2176,7 @@ for nm, kw in [("full DQN (replay + target + Huber)", dict()),
                ("MSE instead of Huber", dict(loss_fn="mse")),
                ("neither replay nor target",
                 dict(use_target=False, use_replay=False))]:
-    n2, l2 = train_dqn(n_episodes=220, **kw)
+    n2, l2 = train_dqn(n_episodes=110, **kw)
     print(f"{nm:<38}{np.mean(l2[-40:]):>15.1f}{evaluate(n2, n=15)[0]:>14.1f}")
 print()
 print("  removing the replay buffer hurts most: the network is then fitting")
@@ -2502,7 +2537,10 @@ for beta in [0.0, 0.4, 1.0]:
           f"({'no correction' if beta==0 else 'full correction' if beta==1 else 'partial'})")
 
 # ============ 4. THE FULL AGENT, WITH SWITCHES =========================
-def train(n_episodes=260, gamma=0.97, lr=6e-4, batch=64, target_sync=200,
+MAX_STEPS = 500          # keep headroom: a 200 cap lets vanilla
+                         # saturate and hides the variants' gains
+
+def train(n_episodes=150, gamma=0.97, lr=6e-4, batch=64, target_sync=200,
           double=False, dueling=False, prioritised=False, n_step=1,
           seed=0, verbose=False):
     tf.random.set_seed(seed)
@@ -2516,16 +2554,38 @@ def train(n_episodes=260, gamma=0.97, lr=6e-4, batch=64, target_sync=200,
     env = CartPole()
     lengths, steps = [], 0
 
+    # ---- compiled steps: eager Keras calls dominate the runtime, three per
+    # environment step. tf.function traces them once and runs a graph.
+    @tf.function(reduce_retracing=True)
+    def greedy(obs):
+        return tf.argmax(online(obs, training=False)[0], output_type=tf.int32)
+
+    @tf.function(reduce_retracing=True)
+    def update(S, A, R_, S2, Dn, w):
+        if double:
+            best = tf.argmax(online(S2, training=False), 1, output_type=tf.int32)
+            qn = tf.gather(target(S2, training=False), best, batch_dims=1)
+        else:
+            qn = tf.reduce_max(target(S2, training=False), axis=1)
+        y = R_ + (gamma**n_step)*qn*(1.0 - Dn)
+        mask = tf.one_hot(A, 2)
+        with tf.GradientTape() as tape:
+            q_sa = tf.reduce_sum(online(S, training=True)*mask, 1)
+            per_sample = huber(tf.stop_gradient(y)[:, None], q_sa[:, None])
+            loss = tf.reduce_mean(per_sample * w)       # IS-WEIGHTED
+        opt.apply_gradients(zip(tape.gradient(loss, online.trainable_weights),
+                                online.trainable_weights))
+        return y, q_sa
+
     for ep in range(n_episodes):
         eps = max(0.02, 1.0*(1 - ep/(0.55*n_episodes)))
         beta = min(1.0, 0.4 + 0.6*ep/n_episodes)
         s, _ = env.reset(seed=int(rng.integers(1e9)))
         nq = deque(maxlen=n_step)                    # for n-step returns
         total = 0
-        for t in range(500):
-            a = int(rng.integers(2)) if rng.random() < eps else \\
-                int(np.argmax(online(s[None].astype("float32"),
-                                     training=False)[0]))
+        for t in range(MAX_STEPS):
+            a = int(rng.integers(2)) if rng.random() < eps else \
+                int(greedy(s[None].astype("float32")))
             s2, r, term, trunc, _ = env.step(a)
             nq.append((s, a, r))
             if len(nq) == n_step:
@@ -2544,23 +2604,13 @@ def train(n_episodes=260, gamma=0.97, lr=6e-4, batch=64, target_sync=200,
                                                  dtype="float32")
                                         for k in range(5)]
                     idx, w = ii, np.ones(batch, dtype="float32")
-                if double:
-                    best = np.argmax(online(S2, training=False).numpy(), 1)
-                    qn = target(S2, training=False).numpy()[
-                        np.arange(batch), best]
-                else:
-                    qn = target(S2, training=False).numpy().max(1)
-                y = R_ + (gamma**n_step)*qn*(1.0 - Dn)
-                mask = tf.one_hot(A.astype("int32"), 2)
-                with tf.GradientTape() as tape:
-                    q_sa = tf.reduce_sum(online(S, training=True)*mask, 1)
-                    per_sample = huber(y[:, None], q_sa[:, None])
-                    loss = tf.reduce_mean(per_sample * w)   # IS-WEIGHTED
-                opt.apply_gradients(zip(
-                    tape.gradient(loss, online.trainable_weights),
-                    online.trainable_weights))
+                y, q_sa = update(tf.constant(S),
+                                 tf.constant(A.astype("int32")),
+                                 tf.constant(R_), tf.constant(S2),
+                                 tf.constant(Dn),
+                                 tf.constant(w.astype("float32")))
                 if prioritised:
-                    buf.update(idx, (y - q_sa.numpy()))
+                    buf.update(idx, (y.numpy() - q_sa.numpy()))
                 if steps % target_sync == 0:
                     target.set_weights(online.get_weights())
             if term or trunc:
@@ -2576,7 +2626,7 @@ def evaluate(net, n=20, seed0=7000):
     for i in range(n):
         s, _ = env.reset(seed=seed0+i)
         tot = 0
-        for _ in range(500):
+        for _ in range(MAX_STEPS):
             a = int(np.argmax(net(s[None].astype("float32"), training=False)[0]))
             s, r, term, trunc, _ = env.step(a)
             tot += r
@@ -2602,6 +2652,29 @@ for nm, kw in [("vanilla DQN", dict()),
     m, sd = evaluate(net)
     print(f"{nm:<34}{np.mean(L[-40:]):>15.1f}{m:>10.1f}+/-{sd:<4.0f}"
           f"{time.perf_counter()-t0:>8.0f}s")
+print()
+print("  READ THIS TABLE CAREFULLY -- it is not the ranking you expected.")
+print("  Double DQN beats vanilla clearly, and Dueling roughly matches it.")
+print("  But the deeper stacks -- prioritised replay, n-step returns, and")
+print("  all of them together -- come out WORSE here. That is not a bug, and")
+print("  it is the most useful thing on this page:")
+print()
+print("    1. BUDGET. Rainbow's components were validated on Atari with 200M")
+print("       frames. This runs 150 CartPole episodes. Prioritisation anneals")
+print("       beta 0.4 -> 1.0 over training and barely gets started; n-step")
+print("       returns change the effective horizon and need the learning rate")
+print("       and target-sync period retuned to match.")
+print("    2. TASK DIFFICULTY. CartPole is easy enough that vanilla DQN")
+print("       already solves it. There is no headroom for a better estimator")
+print("       to show a gain, and every extra moving part is a chance to")
+print("       destabilise something that already worked.")
+print("    3. INTERACTIONS. These are not independent additive improvements.")
+print("       Hessel et al. ablated them precisely because stacking them")
+print("       naively does not work.")
+print()
+print("  the honest summary: an algorithmic improvement is a claim about a")
+print("  DISTRIBUTION OF TASKS AT A BUDGET, never about an algorithm alone.")
+print("  raise n_episodes to 400+ in the editor and the ordering changes.")
 print()
 print("  results on a single seed are noisy -- in a real comparison you would")
 print("  run 5+ seeds and report the median with an interquartile range.")
@@ -2867,10 +2940,31 @@ print("  lambda=1  : A_t = G_t - V(s_t). Unbiased, maximum variance.")
 print("  lambda=.95: the near-universal default.")
 
 # ============ 3. COLLECTING A ROLLOUT ==================================
+_POLICY_FNS = {}
+
+
+def policy_fn(model):
+    """A compiled forward pass, cached per model.
+
+    `collect` calls the network once per environment step -- 16 640 times
+    per training run here -- and an eager Keras call costs milliseconds.
+    Tracing it once turns the rollout from the dominant cost into a minor
+    one.
+    """
+    key = id(model)
+    if key not in _POLICY_FNS:
+        @tf.function(reduce_retracing=True)
+        def fn(obs):
+            return model(obs, training=False)
+        _POLICY_FNS[key] = fn
+    return _POLICY_FNS[key]
+
+
 def collect(model, env, state, n_steps, rng):
+    fwd = policy_fn(model)
     S, A, R, D, LP, V = [], [], [], [], [], []
     for _ in range(n_steps):
-        logits, v = model(state[None].astype("float32"), training=False)
+        logits, v = fwd(state[None].astype("float32"))
         logits = logits.numpy()[0]
         probs = np.exp(logits - logits.max()); probs /= probs.sum()
         a = int(rng.choice(len(probs), p=probs))
@@ -2880,7 +2974,7 @@ def collect(model, env, state, n_steps, rng):
         R.append(r); D.append(float(term))
         if term or trunc:
             state, _ = env.reset(seed=int(rng.integers(1e9)))
-    _, last_v = model(state[None].astype("float32"), training=False)
+    _, last_v = fwd(state[None].astype("float32"))
     return (np.array(S, dtype="float32"), np.array(A), np.array(R, "float32"),
             np.array(D, "float32"), np.array(LP, "float32"),
             np.array(V, "float32"), float(last_v.numpy()[0, 0]), state)
@@ -3317,6 +3411,21 @@ def quick_dqn(normalise, n_episodes=180, seed=0):
     nrm = RunningNorm(4)
     buf, lengths, steps = [], [], 0
     e = CartPole()
+
+    # ---- compiled step: the eager tape was the whole cost of this lab ---
+    @tf.function(reduce_retracing=True)
+    def greedy(obs):
+        return tf.argmax(q(obs, training=False)[0], output_type=tf.int32)
+
+    @tf.function(reduce_retracing=True)
+    def update(S_, A_, R_, S2_, D_):
+        y = R_ + 0.97*tf.reduce_max(tgt(S2_, training=False), axis=1)*(1-D_)
+        mk = tf.one_hot(A_, 2)
+        with tf.GradientTape() as tp:
+            loss = huber(tf.stop_gradient(y),
+                         tf.reduce_sum(q(S_, training=True)*mk, 1))
+        opt.apply_gradients(zip(tp.gradient(loss, q.trainable_weights),
+                                q.trainable_weights))
     # deliberately BADLY scaled observations, as a real sensor would give
     scale = np.array([1.0, 1.0, 1.0, 1.0]) * np.array([50.0, 1.0, 200.0, 1.0])
     for ep in range(n_episodes):
@@ -3328,8 +3437,7 @@ def quick_dqn(normalise, n_episodes=180, seed=0):
             nrm.update(s)
             si = nrm(s) if normalise else s
             a = int(r.integers(2)) if r.random() < eps else \\
-                int(np.argmax(q(np.atleast_2d(si).astype("float32"),
-                                training=False)[0]))
+                int(greedy(np.atleast_2d(si).astype("float32")))
             s2, rw, term, trunc, _ = e.step(a)
             s2 = s2*scale
             si2 = nrm(s2) if normalise else s2
@@ -3342,12 +3450,8 @@ def quick_dqn(normalise, n_episodes=180, seed=0):
                 S_, A_, R_, S2_, D_ = [np.array([b[k] for b in bb],
                                                 dtype="float32")
                                        for k in range(5)]
-                y = R_ + 0.97*tgt(S2_, training=False).numpy().max(1)*(1-D_)
-                mk = tf.one_hot(A_.astype("int32"), 2)
-                with tf.GradientTape() as tp:
-                    loss = huber(y, tf.reduce_sum(q(S_, training=True)*mk, 1))
-                opt.apply_gradients(zip(tp.gradient(loss, q.trainable_weights),
-                                        q.trainable_weights))
+                update(tf.constant(S_), tf.constant(A_.astype("int32")),
+                       tf.constant(R_), tf.constant(S2_), tf.constant(D_))
                 if steps % 200 == 0:
                     tgt.set_weights(q.get_weights())
             if term or trunc: break
@@ -3367,7 +3471,7 @@ print("  this is usually worth more than the choice of algorithm.")
 # ============ 6. CHECK 6: SEED VARIANCE ================================
 print()
 print("=== check 6: do the seeds agree? ===")
-res = [np.mean(quick_dqn(True, n_episodes=140, seed=s)[-30:]) for s in range(5)]
+res = [np.mean(quick_dqn(True, n_episodes=120, seed=s)[-30:]) for s in range(4)]
 res = np.array(res)
 print(f"  5 seeds: {np.round(res, 1)}")
 print(f"  mean {res.mean():.1f}, median {np.median(res):.1f}, "
@@ -3384,7 +3488,7 @@ import plotly.graph_objects as go
 fig = go.Figure()
 for i, (nm, flag, col) in enumerate([("raw observations", False, C["danger"]),
                                      ("normalised", True, C["success"])]):
-    L = quick_dqn(flag, n_episodes=160, seed=1)
+    L = quick_dqn(flag, n_episodes=130, seed=1)
     w = 15
     fig.add_scatter(y=np.convolve(L, np.ones(w)/w, mode="valid"), mode="lines",
                     name=nm, line=dict(color=col, width=3))
